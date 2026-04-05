@@ -1,0 +1,63 @@
+name: E2E Tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - dev
+    tags:
+      - '*'
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+
+    services:
+      technitium:
+        image: technitium/dns-server:latest
+        ports:
+          - 5380:5380
+          - 5354:53/udp
+          - 5354:53/tcp
+        env:
+          DNS_SERVER_DOMAIN: dns.test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Run e2e tests
+        env:
+          TECHNITIUM_URL: http://localhost:5380
+          TECHNITIUM_DNS_PORT: "5354"
+        run: uv run pytest tests/e2e/ -m e2e -v --junitxml=reports/e2e-results.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: reports/e2e-results.xml
+
+      - name: Publish e2e test report
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: E2E Tests
+          path: reports/e2e-results.xml
+          reporter: java-junit

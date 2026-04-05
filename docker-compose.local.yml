@@ -1,0 +1,7 @@
+services:
+  technitium-api-proxy:
+    build: .
+    ports:
+      - "31399:31399"
+    volumes:
+      - ./config.yml:/app/config.yml:ro

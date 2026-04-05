@@ -1,0 +1,7 @@
+services:
+  technitium-api-proxy:
+    image: spaleks/technitium-api-proxy:latest
+    ports:
+      - "31399:31399"
+    volumes:
+      - ./config.yml:/app/config.yml:ro

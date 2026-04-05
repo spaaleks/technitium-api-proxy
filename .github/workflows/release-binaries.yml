@@ -1,0 +1,63 @@
+name: Release Binaries
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Ensure build script is executable
+        run: chmod +x bin/buildAnyPlatform.sh
+
+      - name: Build linux/amd64 and linux/arm64 binaries
+        run: bin/buildAnyPlatform.sh linux/amd64 linux/arm64
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: technitium-api-proxy-binaries
+          path: |
+            dist/technitium-api-proxy.linux-amd64
+            dist/technitium-api-proxy.linux-arm64
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: technitium-api-proxy-binaries
+          path: release
+
+      - name: Prepare files
+        run: |
+          set -euo pipefail
+          ls -l release
+          cp release/technitium-api-proxy.linux-amd64 release/technitium-api-proxy
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/technitium-api-proxy
+            release/technitium-api-proxy.linux-amd64
+            release/technitium-api-proxy.linux-arm64
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

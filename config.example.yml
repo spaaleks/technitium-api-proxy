@@ -1,0 +1,29 @@
+technitium:
+  url: "http://localhost:5380"
+  token: "your-admin-api-token"
+  verify_ssl: true
+
+tokens:
+  # Full access to a zone
+  - name: "full-access"
+    token: "client-secret-token"
+    zones:
+      - name: "example.com"
+        allowed_record_types: ["A", "AAAA", "CNAME", "TXT"]
+        allowed_operations: ["list", "get", "add", "update", "delete"]
+
+  # Only manage records under app.example.com
+  # Allows: app.example.com, api.app.example.com, v2.app.example.com
+  # Denies: www.example.com, mail.example.com
+  - name: "app-team"
+    token: "app-team-secret"
+    zones:
+      - name: "example.com"
+        subdomain_filter: "^app\\."
+        allowed_record_types: ["A", "AAAA", "CNAME"]
+        allowed_operations: ["list", "get", "add", "update", "delete"]
+
+  # Read-only access to all zones (no zone scoping)
+  - name: "monitoring"
+    token: "monitoring-secret"
+    global_read_only: true

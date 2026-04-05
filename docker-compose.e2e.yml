@@ -1,0 +1,15 @@
+services:
+  technitium:
+    image: technitium/dns-server:latest
+    ports:
+      - "${TECHNITIUM_PORT:-5380}:5380"
+      - "${TECHNITIUM_DNS_PORT:-5354}:53/udp"
+      - "${TECHNITIUM_DNS_PORT:-5354}:53/tcp"
+    environment:
+      - DNS_SERVER_DOMAIN=dns.test
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5380/"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+      start_period: 10s

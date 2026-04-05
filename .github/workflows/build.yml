@@ -1,0 +1,74 @@
+name: Unit Tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - dev
+    tags:
+      - '*'
+  workflow_dispatch:
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Run unit tests
+        run: uv run pytest tests/ --ignore=tests/e2e -v --junitxml=reports/unit-results.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: reports/unit-results.xml
+
+      - name: Publish unit test report
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Unit Tests
+          path: reports/unit-results.xml
+          reporter: java-junit
+
+  build-binary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Ensure build script is executable
+        run: chmod +x bin/buildAnyPlatform.sh
+
+      - name: Build linux/amd64 and linux/arm64 binaries
+        run: bin/buildAnyPlatform.sh linux/amd64 linux/arm64
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: technitium-api-proxy-binaries
+          path: |
+            dist/technitium-api-proxy.linux-amd64
+            dist/technitium-api-proxy.linux-arm64
+          if-no-files-found: error
