@@ -100,7 +100,7 @@ tokens:
     token: "{TOKENS['subdomain_filtered']}"
     zones:
       - name: "{ZONE_ALLOWED}"
-        subdomain_filter: "^app\\."
+        subdomain_filter: '^app\\.'
 
   - name: "readonly"
     token: "{TOKENS['readonly']}"

@@ -95,7 +95,7 @@ tokens:
     token: "app-team-secret"
     zones:
       - name: "example.com"
-        subdomain_filter: "^app\\."
+        subdomain_filter: '^app\.'
         allowed_record_types: ["A", "AAAA", "CNAME"]
         allowed_operations: ["list", "get", "add", "update", "delete"]
 
