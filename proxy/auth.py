@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hmac
+
 from fastapi import Header, Query, Request
 from fastapi.responses import JSONResponse
 
@@ -31,7 +33,7 @@ def resolve_token(
 
     config = request.app.state.config
     for tc in config.tokens:
-        if tc.token == raw_token:
+        if hmac.compare_digest(tc.token, raw_token):
             return tc
 
     raise TokenError

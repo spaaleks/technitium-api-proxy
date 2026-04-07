@@ -135,6 +135,8 @@ async def api_proxy(
     response = await forward_upstream(request, endpoint_path)
 
     # Filter zone list for scoped tokens
+    # Wildcard zones ('*') won't match real zone names, so only explicitly
+    # listed zones appear in the filtered list.
     if endpoint_path.lower().rstrip("/") == "/api/zones/list" and not token_config.global_read_only:
         response = _filter_zone_list_response(response, token_config)
 
