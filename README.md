@@ -18,6 +18,7 @@ Clients use the standard [Technitium API](https://github.com/TechnitiumSoftware/
 - Global read-only tokens that allow full read access across all zones without write permissions
 - Tiered endpoint classification where only record and zone-list endpoints are proxied; zone management and admin endpoints are blocked
 - Zone list filtering where `/api/zones/list` responses only show zones the token is allowed to access
+- Hot reload of configuration on file change (no restart required)
 - Structured audit logging via structlog
 - Multi-arch Docker images (linux/amd64, linux/arm64)
 - Standalone binary builds via PyInstaller
@@ -178,6 +179,7 @@ bin/start.sh
 | `HOST` | `0.0.0.0` | Host/IP to bind |
 | `PORT` | `31399` | Port to bind |
 | `LOG_LEVEL` | `info` | Log level (`debug`, `info`, `warning`, `error`) |
+| `RELOAD_INTERVAL` | `5` | Seconds between config file change checks (0 to disable) |
 
 ---
 
