@@ -126,3 +126,82 @@ class TestAppConfigModel:
         assert zp.allowed_record_types == []
         assert zp.allowed_operations == []
         assert zp.subdomain_filter is None
+
+
+class TestZonePolicyExpansion:
+    """Tests for 'names' shorthand expansion in zone policies."""
+
+    def test_names_expands_to_multiple_policies(self, tmp_path: Path) -> None:
+        config_file = tmp_path / "config.yml"
+        config_file.write_text(
+            """\
+technitium:
+  url: "http://dns:5380"
+  token: "admin-tok"
+tokens:
+  - name: "acme"
+    token: "acme-tok"
+    zones:
+      - names: ["example.com", "other.org", "third.io"]
+        allowed_record_types: ["TXT"]
+        allowed_operations: ["add", "delete"]
+        subdomain_filter: "^_acme-challenge\\\\."
+"""
+        )
+        os.environ["CONFIG_PATH"] = str(config_file)
+        cfg = load_config()
+
+        zones = cfg.tokens[0].zones
+        assert len(zones) == 3
+        assert [z.name for z in zones] == ["example.com", "other.org", "third.io"]
+        for z in zones:
+            assert z.allowed_record_types == ["TXT"]
+            assert z.allowed_operations == ["add", "delete"]
+            assert z.subdomain_filter == "^_acme-challenge\\."
+
+    def test_names_mixed_with_name(self, tmp_path: Path) -> None:
+        config_file = tmp_path / "config.yml"
+        config_file.write_text(
+            """\
+technitium:
+  url: "http://dns:5380"
+  token: "admin-tok"
+tokens:
+  - name: "mixed"
+    token: "mixed-tok"
+    zones:
+      - name: "single.com"
+        allowed_record_types: ["A"]
+      - names: ["multi1.com", "multi2.com"]
+        allowed_record_types: ["TXT"]
+"""
+        )
+        os.environ["CONFIG_PATH"] = str(config_file)
+        cfg = load_config()
+
+        zones = cfg.tokens[0].zones
+        assert len(zones) == 3
+        assert zones[0].name == "single.com"
+        assert zones[0].allowed_record_types == ["A"]
+        assert zones[1].name == "multi1.com"
+        assert zones[1].allowed_record_types == ["TXT"]
+        assert zones[2].name == "multi2.com"
+        assert zones[2].allowed_record_types == ["TXT"]
+
+    def test_neither_name_nor_names_raises(self, tmp_path: Path) -> None:
+        config_file = tmp_path / "config.yml"
+        config_file.write_text(
+            """\
+technitium:
+  url: "http://dns:5380"
+  token: "admin-tok"
+tokens:
+  - name: "bad"
+    token: "bad-tok"
+    zones:
+      - allowed_record_types: ["TXT"]
+"""
+        )
+        os.environ["CONFIG_PATH"] = str(config_file)
+        with pytest.raises(ValueError, match="name.*names"):
+            load_config()

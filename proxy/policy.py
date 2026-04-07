@@ -104,15 +104,26 @@ def extract_operation(path: str) -> str | None:
     return None
 
 
+def has_wildcard_zone(zone_policies: list[ZonePolicy]) -> bool:
+    """Return True if any zone policy is a wildcard (name='*')."""
+    return any(zp.name == "*" for zp in zone_policies)
+
+
 def find_zone_policy(
     zone: str, zone_policies: list[ZonePolicy],
 ) -> ZonePolicy | None:
-    """Find the ZonePolicy matching the given zone name (case-insensitive)."""
+    """Find the ZonePolicy matching the given zone name (case-insensitive).
+
+    Falls back to a wildcard policy (name='*') if no exact match is found.
+    """
     zone_lower = zone.lower()
+    wildcard: ZonePolicy | None = None
     for zp in zone_policies:
         if zp.name.lower() == zone_lower:
             return zp
-    return None
+        if zp.name == "*":
+            wildcard = zp
+    return wildcard
 
 
 def evaluate_policy(
@@ -156,8 +167,11 @@ def resolve_zone(
 
     Priority: ?zone= takes precedence over ?domain=.
     For ?domain=, strips leftmost labels until a configured zone matches.
+    If a wildcard ('*') is in configured_zones, accepts any zone/domain.
     Returns None if no zone can be determined.
     """
+    has_wildcard = "*" in configured_zones
+
     if zone_param:
         return zone_param
 
@@ -165,7 +179,7 @@ def resolve_zone(
         return None
 
     # Strip leftmost labels from domain until we find a configured zone
-    lower_zones = {z.lower(): z for z in configured_zones}
+    lower_zones = {z.lower(): z for z in configured_zones if z != "*"}
     domain = domain_param.lower()
     while domain:
         if domain in lower_zones:
@@ -175,5 +189,9 @@ def resolve_zone(
         if dot_idx == -1:
             break
         domain = domain[dot_idx + 1 :]
+
+    # Wildcard: accept the domain as-is (Technitium resolves the actual zone)
+    if has_wildcard:
+        return domain_param
 
     return None

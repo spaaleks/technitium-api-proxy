@@ -1,10 +1,10 @@
 technitium:
-  url: "http://localhost:5380"
+  url: "http://your-technitium-server:5380"
   token: "your-admin-api-token"
   verify_ssl: true
 
 tokens:
-  # Full access to a zone
+  # Full access to a single zone
   - name: "full-access"
     token: "client-secret-token"
     zones:
@@ -12,9 +12,26 @@ tokens:
         allowed_record_types: ["A", "AAAA", "CNAME", "TXT"]
         allowed_operations: ["list", "get", "add", "update", "delete"]
 
+  # Shared policy for multiple specific zones
+  - name: "multi-zone"
+    token: "multi-zone-secret"
+    zones:
+      - names: ["example.com", "other.org", "third.io"]
+        allowed_record_types: ["A", "AAAA", "CNAME"]
+        allowed_operations: ["get", "add", "update", "delete"]
+
+  # ACME challenge token for all zones
+  - name: "acme-client"
+    token: "acme-secret"
+    zones:
+      - name: "*"
+        allowed_record_types: ["TXT"]
+        allowed_operations: ["add", "delete"]
+        subdomain_filter: "^_acme-challenge\\."
+
   # Only manage records under app.example.com
-  # Allows: app.example.com, api.app.example.com, v2.app.example.com
-  # Denies: www.example.com, mail.example.com
+  # Allows: app.example.com
+  # Denies: www.example.com, mail.example.com, v2.app.example.com
   - name: "app-team"
     token: "app-team-secret"
     zones:
