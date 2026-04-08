@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any, AsyncIterator
 
 import os
@@ -18,16 +20,40 @@ from proxy.logger import setup_logging
 from proxy.policy import Tier, classify_endpoint, evaluate_policy, extract_operation, is_read_only_endpoint, is_record_endpoint, resolve_zone
 
 audit_log = structlog.get_logger("proxy.audit")
+_reload_log = structlog.get_logger("proxy.reload")
 
 _config = load_config()
 setup_logging(os.environ.get("LOG_LEVEL", "info"))
+
+_CONFIG_PATH = Path(os.environ.get("CONFIG_PATH", "config.yml"))
+_RELOAD_INTERVAL = int(os.environ.get("RELOAD_INTERVAL", "5"))
+
+
+async def _watch_config(app: FastAPI) -> None:
+    """Poll config file for changes and hot-reload on modification."""
+    last_mtime: float = _CONFIG_PATH.stat().st_mtime if _CONFIG_PATH.exists() else 0
+    while True:
+        await asyncio.sleep(_RELOAD_INTERVAL)
+        try:
+            current_mtime = _CONFIG_PATH.stat().st_mtime
+            if current_mtime <= last_mtime:
+                continue
+            last_mtime = current_mtime
+            new_config = load_config()
+            app.state.config = new_config
+            _reload_log.info("config_reloaded", config_path=str(_CONFIG_PATH))
+        except Exception as exc:
+            _reload_log.error("config_reload_failed", error=str(exc), config_path=str(_CONFIG_PATH))
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.config = _config
     app.state.http_client = httpx.AsyncClient(verify=_config.technitium.verify_ssl)
+    watcher = asyncio.create_task(_watch_config(app)) if _RELOAD_INTERVAL > 0 else None
     yield
+    if watcher is not None:
+        watcher.cancel()
     await app.state.http_client.aclose()
 
 
@@ -135,6 +161,8 @@ async def api_proxy(
     response = await forward_upstream(request, endpoint_path)
 
     # Filter zone list for scoped tokens
+    # Wildcard zones ('*') won't match real zone names, so only explicitly
+    # listed zones appear in the filtered list.
     if endpoint_path.lower().rstrip("/") == "/api/zones/list" and not token_config.global_read_only:
         response = _filter_zone_list_response(response, token_config)
 

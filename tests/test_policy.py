@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from proxy.config import ZonePolicy
-from proxy.policy import evaluate_policy, resolve_zone
+from proxy.policy import evaluate_policy, find_zone_policy, has_wildcard_zone, resolve_zone
 
 
 class TestResolveZoneFromParam:
@@ -167,3 +167,57 @@ class TestEvaluatePolicySubdomainFilter:
             "example.com", policies, "/api/zones/records/get", "mail.example.com", None,
         )
         assert result is not None
+
+
+class TestWildcardZone:
+    """Tests for wildcard zone ('*') support."""
+
+    def test_has_wildcard_zone_true(self) -> None:
+        policies = [ZonePolicy(name="*", allowed_record_types=["TXT"])]
+        assert has_wildcard_zone(policies) is True
+
+    def test_has_wildcard_zone_false(self) -> None:
+        policies = [ZonePolicy(name="example.com")]
+        assert has_wildcard_zone(policies) is False
+
+    def test_find_zone_policy_wildcard_fallback(self) -> None:
+        wildcard = ZonePolicy(name="*", allowed_record_types=["TXT"])
+        policies = [ZonePolicy(name="example.com"), wildcard]
+        assert find_zone_policy("example.com", policies).name == "example.com"
+        assert find_zone_policy("other.com", policies) is wildcard
+
+    def test_resolve_zone_wildcard_with_domain(self) -> None:
+        result = resolve_zone(None, "_acme-challenge.example.com", ["*"])
+        assert result == "_acme-challenge.example.com"
+
+    def test_resolve_zone_wildcard_with_zone_param(self) -> None:
+        result = resolve_zone("example.com", None, ["*"])
+        assert result == "example.com"
+
+    def test_resolve_zone_wildcard_prefers_explicit_match(self) -> None:
+        result = resolve_zone(None, "_acme-challenge.example.com", ["*", "example.com"])
+        assert result == "example.com"
+
+    def test_evaluate_policy_wildcard_allows_any_zone(self) -> None:
+        policies = [ZonePolicy(name="*", allowed_record_types=["TXT"], allowed_operations=["add", "delete"])]
+        result = evaluate_policy("anydomain.com", policies, "/api/zones/records/add", None, "TXT")
+        assert result is None
+
+    def test_evaluate_policy_wildcard_enforces_record_type(self) -> None:
+        policies = [ZonePolicy(name="*", allowed_record_types=["TXT"])]
+        result = evaluate_policy("anydomain.com", policies, "/api/zones/records/add", None, "A")
+        assert result is not None
+        assert "record type" in result
+
+    def test_evaluate_policy_wildcard_enforces_subdomain_filter(self) -> None:
+        policies = [ZonePolicy(name="*", subdomain_filter=r"^_acme-challenge\.")]
+        result = evaluate_policy("example.com", policies, "/api/zones/records/add", "_acme-challenge.example.com", None)
+        assert result is None
+        result = evaluate_policy("example.com", policies, "/api/zones/records/add", "www.example.com", None)
+        assert result is not None
+
+    def test_evaluate_policy_wildcard_enforces_operations(self) -> None:
+        policies = [ZonePolicy(name="*", allowed_operations=["add", "delete"])]
+        result = evaluate_policy("example.com", policies, "/api/zones/records/get", None, None)
+        assert result is not None
+        assert "operation" in result

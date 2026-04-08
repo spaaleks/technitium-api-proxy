@@ -10,12 +10,15 @@ Clients use the standard [Technitium API](https://github.com/TechnitiumSoftware/
 
 - YAML-driven configuration (`config.yml`) with per-token access policies
 - Zone-scoped tokens that restrict which DNS zones a token can access
+- Multi-zone policies via `names` to apply the same rules to multiple zones without repetition
+- Wildcard zone (`name: "*"`) for tokens that need access across all zones (e.g. ACME challenge automation)
 - Operation filtering to limit tokens to specific CRUD operations (`get`, `add`, `update`, `delete`)
 - Record type filtering to restrict tokens to specific DNS record types (`A`, `AAAA`, `CNAME`, `TXT`, etc.)
 - Subdomain filtering to limit tokens to manage records under a specific subdomain prefix
 - Global read-only tokens that allow full read access across all zones without write permissions
 - Tiered endpoint classification where only record and zone-list endpoints are proxied; zone management and admin endpoints are blocked
 - Zone list filtering where `/api/zones/list` responses only show zones the token is allowed to access
+- Hot reload of configuration on file change (no restart required)
 - Structured audit logging via structlog
 - Multi-arch Docker images (linux/amd64, linux/arm64)
 - Standalone binary builds via PyInstaller
@@ -75,12 +78,12 @@ docker run --rm \
 
 ```yaml
 technitium:
-  url: "http://localhost:5380"
+  url: "http://your-technitium-server:5380"
   token: "your-admin-api-token"
   verify_ssl: true
 
 tokens:
-  # Full access to a zone
+  # Full access to a single zone
   - name: "full-access"
     token: "client-secret-token"
     zones:
@@ -88,9 +91,26 @@ tokens:
         allowed_record_types: ["A", "AAAA", "CNAME", "TXT"]
         allowed_operations: ["list", "get", "add", "update", "delete"]
 
+  # Shared policy for multiple specific zones
+  - name: "multi-zone"
+    token: "multi-zone-secret"
+    zones:
+      - names: ["example.com", "other.org", "third.io"]
+        allowed_record_types: ["A", "AAAA", "CNAME"]
+        allowed_operations: ["get", "add", "update", "delete"]
+
+  # ACME challenge token for all zones
+  - name: "acme-client"
+    token: "acme-secret"
+    zones:
+      - name: "*"
+        allowed_record_types: ["TXT"]
+        allowed_operations: ["add", "delete"]
+        subdomain_filter: "^_acme-challenge\\."
+
   # Only manage records under app.example.com (regex pattern)
-  # Allows: app.example.com, api.app.example.com, v2.app.example.com
-  # Denies: www.example.com, mail.example.com
+  # Allows: app.example.com
+  # Denies: www.example.com, mail.example.com, v2.app.example.com
   - name: "app-team"
     token: "app-team-secret"
     zones:
@@ -118,10 +138,13 @@ tokens:
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `name` | string | required | DNS zone name (e.g. `example.com`) |
+| `name` | string | - | Single DNS zone name (e.g. `example.com`), or `*` for all zones |
+| `names` | list | - | Multiple DNS zone names sharing the same policy |
 | `allowed_record_types` | list | `[]` (all) | Restrict to specific record types (`A`, `AAAA`, `CNAME`, `TXT`, `MX`, etc.) |
 | `allowed_operations` | list | `[]` (all) | Restrict to specific operations (`get`, `add`, `update`, `delete`) |
 | `subdomain_filter` | string | `null` | Regex pattern to match against the domain (case-insensitive) |
+
+Each zone policy must have either `name` or `names` (not both). Use `names` to apply the same rules to multiple zones without repetition. Use `name: "*"` for tokens that need access across all zones (e.g. ACME DNS-01 challenges). Wildcard tokens only see explicitly listed zones in `/api/zones/list` responses.
 
 Empty lists mean "all allowed". Omit `allowed_record_types` to allow all record types, omit `allowed_operations` to allow all operations.
 
@@ -156,6 +179,7 @@ bin/start.sh
 | `HOST` | `0.0.0.0` | Host/IP to bind |
 | `PORT` | `31399` | Port to bind |
 | `LOG_LEVEL` | `info` | Log level (`debug`, `info`, `warning`, `error`) |
+| `RELOAD_INTERVAL` | `5` | Seconds between config file change checks (0 to disable) |
 
 ---
 
