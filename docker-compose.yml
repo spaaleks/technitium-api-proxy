@@ -1,6 +1,6 @@
 services:
   technitium-api-proxy:
-    image: spaleks/technitium-api-proxy:latest
+    image: spaaleks/technitium-api-proxy:latest
     ports:
       - "31399:31399"
     volumes:
