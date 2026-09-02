@@ -40,11 +40,11 @@ Client --> Proxy (port 31399) --> Technitium (port 5380)
 
 ### Endpoint Tiers
 
-| Tier | Endpoints | Access |
-|------|-----------|--------|
-| Tier 1 | `/api/zones/records/*`, `/api/zones/list` | Allowed (with policy checks) |
-| Tier 2 | `/api/zones/create`, `/api/zones/delete`, `/api/zones/enable`, `/api/zones/disable`, `/api/zones/import`, `/api/zones/export` | Blocked |
-| Tier 3 | All other `/api/*` (admin, settings, etc.) | Blocked |
+| Tier   | Endpoints                                                                                                                     | Access                       |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| Tier 1 | `/api/zones/records/*`, `/api/zones/list`                                                                                     | Allowed (with policy checks) |
+| Tier 2 | `/api/zones/create`, `/api/zones/delete`, `/api/zones/enable`, `/api/zones/disable`, `/api/zones/import`, `/api/zones/export` | Blocked                      |
+| Tier 3 | All other `/api/*` (admin, settings, etc.)                                                                                    | Blocked                      |
 
 ---
 
@@ -54,13 +54,13 @@ Client --> Proxy (port 31399) --> Technitium (port 5380)
 
 ```yaml
 services:
-  technitium-api-proxy:
-    image: spaleks/technitium-api-proxy:latest
-    # or quay.io/spaleks/technitium-api-proxy:latest
-    ports:
-      - "31399:31399"
-    volumes:
-      - ./config.yml:/app/config.yml:ro
+    technitium-api-proxy:
+        image: spaaleks/technitium-api-proxy:latest
+        # or quay.io/spaaleks/technitium-api-proxy:latest
+        ports:
+            - "31399:31399"
+        volumes:
+            - ./config.yml:/app/config.yml:ro
 ```
 
 ### Standalone
@@ -69,7 +69,7 @@ services:
 docker run --rm \
   -p 31399:31399 \
   -v "$(pwd)/config.yml:/app/config.yml:ro" \
-  spaleks/technitium-api-proxy:latest
+  spaaleks/technitium-api-proxy:latest
 ```
 
 ---
@@ -78,71 +78,71 @@ docker run --rm \
 
 ```yaml
 technitium:
-  url: "http://your-technitium-server:5380"
-  token: "your-admin-api-token"
-  verify_ssl: true
+    url: "http://your-technitium-server:5380"
+    token: "your-admin-api-token"
+    verify_ssl: true
 
 tokens:
-  # Full access to a single zone
-  - name: "full-access"
-    token: "client-secret-token"
-    zones:
-      - name: "example.com"
-        allowed_record_types: ["A", "AAAA", "CNAME", "TXT"]
-        allowed_operations: ["list", "get", "add", "update", "delete"]
+    # Full access to a single zone
+    - name: "full-access"
+      token: "client-secret-token"
+      zones:
+          - name: "example.com"
+            allowed_record_types: ["A", "AAAA", "CNAME", "TXT"]
+            allowed_operations: ["list", "get", "add", "update", "delete"]
 
-  # Shared policy for multiple specific zones
-  - name: "multi-zone"
-    token: "multi-zone-secret"
-    zones:
-      - names: ["example.com", "other.org", "third.io"]
-        allowed_record_types: ["A", "AAAA", "CNAME"]
-        allowed_operations: ["get", "add", "update", "delete"]
+    # Shared policy for multiple specific zones
+    - name: "multi-zone"
+      token: "multi-zone-secret"
+      zones:
+          - names: ["example.com", "other.org", "third.io"]
+            allowed_record_types: ["A", "AAAA", "CNAME"]
+            allowed_operations: ["get", "add", "update", "delete"]
 
-  # ACME challenge token for all zones
-  - name: "acme-client"
-    token: "acme-secret"
-    zones:
-      - name: "*"
-        allowed_record_types: ["TXT"]
-        allowed_operations: ["add", "delete"]
-        subdomain_filter: "^_acme-challenge\\."
+    # ACME challenge token for all zones
+    - name: "acme-client"
+      token: "acme-secret"
+      zones:
+          - name: "*"
+            allowed_record_types: ["TXT"]
+            allowed_operations: ["add", "delete"]
+            subdomain_filter: "^_acme-challenge\\."
 
-  # Only manage records under app.example.com (regex pattern)
-  # Allows: app.example.com
-  # Denies: www.example.com, mail.example.com, v2.app.example.com
-  - name: "app-team"
-    token: "app-team-secret"
-    zones:
-      - name: "example.com"
-        subdomain_filter: '^app\.'
-        allowed_record_types: ["A", "AAAA", "CNAME"]
-        allowed_operations: ["list", "get", "add", "update", "delete"]
+    # Only manage records under app.example.com (regex pattern)
+    # Allows: app.example.com
+    # Denies: www.example.com, mail.example.com, v2.app.example.com
+    - name: "app-team"
+      token: "app-team-secret"
+      zones:
+          - name: "example.com"
+            subdomain_filter: '^app\.'
+            allowed_record_types: ["A", "AAAA", "CNAME"]
+            allowed_operations: ["list", "get", "add", "update", "delete"]
 
-  # Read-only access to all zones (no zone scoping)
-  - name: "monitoring"
-    token: "monitoring-secret"
-    global_read_only: true
+    # Read-only access to all zones (no zone scoping)
+    - name: "monitoring"
+      token: "monitoring-secret"
+      global_read_only: true
 ```
 
 ### Token Options
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `name` | string | required | Display name for audit logs |
-| `token` | string | required | The secret token clients use to authenticate |
-| `global_read_only` | bool | `false` | Allow read-only access to all zones (ignores `zones`) |
-| `zones` | list | `[]` | Zone-level access policies |
+| Field              | Type   | Default  | Description                                           |
+| ------------------ | ------ | -------- | ----------------------------------------------------- |
+| `name`             | string | required | Display name for audit logs                           |
+| `token`            | string | required | The secret token clients use to authenticate          |
+| `global_read_only` | bool   | `false`  | Allow read-only access to all zones (ignores `zones`) |
+| `zones`            | list   | `[]`     | Zone-level access policies                            |
 
 ### Zone Policy Options
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `name` | string | - | Single DNS zone name (e.g. `example.com`), or `*` for all zones |
-| `names` | list | - | Multiple DNS zone names sharing the same policy |
-| `allowed_record_types` | list | `[]` (all) | Restrict to specific record types (`A`, `AAAA`, `CNAME`, `TXT`, `MX`, etc.) |
-| `allowed_operations` | list | `[]` (all) | Restrict to specific operations (`get`, `add`, `update`, `delete`) |
-| `subdomain_filter` | string | `null` | Regex pattern to match against the domain (case-insensitive) |
+| Field                  | Type   | Default    | Description                                                                 |
+| ---------------------- | ------ | ---------- | --------------------------------------------------------------------------- |
+| `name`                 | string | -          | Single DNS zone name (e.g. `example.com`), or `*` for all zones             |
+| `names`                | list   | -          | Multiple DNS zone names sharing the same policy                             |
+| `allowed_record_types` | list   | `[]` (all) | Restrict to specific record types (`A`, `AAAA`, `CNAME`, `TXT`, `MX`, etc.) |
+| `allowed_operations`   | list   | `[]` (all) | Restrict to specific operations (`get`, `add`, `update`, `delete`)          |
+| `subdomain_filter`     | string | `null`     | Regex pattern to match against the domain (case-insensitive)                |
 
 Each zone policy must have either `name` or `names` (not both). Use `names` to apply the same rules to multiple zones without repetition. Use `name: "*"` for tokens that need access across all zones (e.g. ACME DNS-01 challenges). Wildcard tokens only see explicitly listed zones in `/api/zones/list` responses.
 
@@ -173,13 +173,13 @@ bin/start.sh
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `CONFIG_PATH` | `config.yml` | Path to the YAML configuration file |
-| `HOST` | `0.0.0.0` | Host/IP to bind |
-| `PORT` | `31399` | Port to bind |
-| `LOG_LEVEL` | `info` | Log level (`debug`, `info`, `warning`, `error`) |
-| `RELOAD_INTERVAL` | `5` | Seconds between config file change checks (0 to disable) |
+| Variable          | Default      | Description                                              |
+| ----------------- | ------------ | -------------------------------------------------------- |
+| `CONFIG_PATH`     | `config.yml` | Path to the YAML configuration file                      |
+| `HOST`            | `0.0.0.0`    | Host/IP to bind                                          |
+| `PORT`            | `31399`      | Port to bind                                             |
+| `LOG_LEVEL`       | `info`       | Log level (`debug`, `info`, `warning`, `error`)          |
+| `RELOAD_INTERVAL` | `5`          | Seconds between config file change checks (0 to disable) |
 
 ---
 
@@ -188,11 +188,13 @@ bin/start.sh
 Clients authenticate by passing their token in one of two ways:
 
 **Header** (preferred):
+
 ```bash
 curl -H "X-API-Token: your-token" http://proxy:31399/api/zones/list
 ```
 
 **Query parameter**:
+
 ```bash
 curl http://proxy:31399/api/zones/list?token=your-token
 ```
